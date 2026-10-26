@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.androidspaceproject.data.model.Launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,6 +87,17 @@ fun LaunchesListScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
+                }
+            } else if (uiState.error != null) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = uiState.error ?: "Произошла ошибка",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             } else if (uiState.launches.isEmpty()) {
                 Box(

@@ -16,6 +16,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.androidspaceproject.data.api.RetrofitInstance
 import com.example.androidspaceproject.ui.detail.LaunchDetailScreen
 import com.example.androidspaceproject.ui.favorites.FavoritesScreen
 import com.example.androidspaceproject.ui.launches.LaunchesListScreen
@@ -27,6 +28,7 @@ import com.example.androidspaceproject.ui.theme.AndroidSpaceProjectTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        RetrofitInstance.init(applicationContext)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
