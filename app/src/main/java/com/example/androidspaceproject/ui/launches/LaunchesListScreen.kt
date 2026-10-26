@@ -123,7 +123,7 @@ fun LaunchesListScreen(
 
 @Composable
 fun LaunchCard(
-    launch: Launch,
+    launch: LaunchUiModel,
     onClick: () -> Unit
 ) {
     Card(
@@ -150,7 +150,7 @@ fun LaunchCard(
             ) = createRefs()
 
             Text(
-                text = launch.launchServiceProvider.name,
+                text = launch.providerName,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
@@ -161,7 +161,7 @@ fun LaunchCard(
             )
 
             Text(
-                text = launch.status.name,
+                text = launch.statusName,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.constrainAs(statusRef) {
@@ -185,7 +185,7 @@ fun LaunchCard(
             )
 
             Text(
-                text = "Ракета: ${launch.rocket.configuration.name}",
+                text = "Ракета: ${launch.rocketName}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.constrainAs(rocketRef) {
@@ -197,7 +197,7 @@ fun LaunchCard(
             )
 
             Text(
-                text = "Площадка: ${launch.pad.name}",
+                text = "Площадка: ${launch.padName}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -211,7 +211,7 @@ fun LaunchCard(
             )
 
             Text(
-                text = "Дата: ${launch.net.replace("T", " ").replace("Z", " UTC")}",
+                text = "Дата: ${launch.date}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.constrainAs(dateRef) {

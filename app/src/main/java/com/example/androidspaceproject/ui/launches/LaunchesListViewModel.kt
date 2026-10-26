@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 data class LaunchesUiState(
     val isLoading: Boolean = false,
-    val launches: List<Launch> = emptyList(),
+    val launches: List<LaunchUiModel> = emptyList(),
     val searchQuery: String = ""
 )
 
@@ -28,12 +28,29 @@ class LaunchesListViewModel(
         loadLaunches()
     }
 
+    private fun Launch.toUiModel(): LaunchUiModel {
+        return LaunchUiModel(
+            id = id,
+            providerName = launchServiceProvider.name,
+            statusName = status.name,
+            name = name,
+            rocketName = rocket.configuration.name,
+            padName = pad.name,
+            date = net
+                .replace("T", " ")
+                .replace("Z", " UTC")
+        )
+    }
+
     private fun loadLaunches() {
         viewModelScope.launch {
             repository.getLaunches().collectLatest { launches ->
+                val filteredLaunches =
+                    filterLaunches(launches, _uiState.value.searchQuery)
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    launches = filterLaunches(launches, _uiState.value.searchQuery)
+                    launches = filteredLaunches.map { it.toUiModel() }
                 )
             }
         }
@@ -41,10 +58,13 @@ class LaunchesListViewModel(
 
     fun onSearchQueryChanged(query: String) {
         _uiState.value = _uiState.value.copy(searchQuery = query)
+
         viewModelScope.launch {
             repository.searchLaunches(query).collectLatest { launches ->
+                val filteredLaunches = filterLaunches(launches, query)
+
                 _uiState.value = _uiState.value.copy(
-                    launches = filterLaunches(launches, query)
+                    launches = filteredLaunches.map { it.toUiModel() }
                 )
             }
         }
