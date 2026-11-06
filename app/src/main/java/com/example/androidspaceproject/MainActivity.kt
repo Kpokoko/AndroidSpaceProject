@@ -16,6 +16,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.androidspaceproject.data.api.RetrofitInstance
 import com.example.androidspaceproject.ui.detail.LaunchDetailScreen
 import com.example.androidspaceproject.ui.favorites.FavoritesScreen
 import com.example.androidspaceproject.ui.launches.LaunchesListScreen
@@ -24,9 +25,11 @@ import com.example.androidspaceproject.ui.navigation.BottomBarScreen
 import com.example.androidspaceproject.ui.navigation.Screen
 import com.example.androidspaceproject.ui.navigation.bottomBarItems
 import com.example.androidspaceproject.ui.theme.AndroidSpaceProjectTheme
+import com.example.androidspaceproject.ui.settings.SettingsScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        RetrofitInstance.init(applicationContext)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
@@ -58,10 +61,21 @@ fun MainAppScreen() {
             startDestination = BottomBarScreen.Launches.route,
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable(Screen.Settings.route) {
+                SettingsScreen(
+                    onDone = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
             composable(BottomBarScreen.Launches.route) {
                 LaunchesListScreen(
                     onLaunchClick = { launchId ->
                         navController.navigate(Screen.Detail.createRoute(launchId))
+                    },
+                    onSettingsClick = {
+                        navController.navigate(Screen.Settings.route)
                     }
                 )
             }
