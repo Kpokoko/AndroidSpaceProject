@@ -9,6 +9,8 @@ sealed class Screen(val route: String) {
     object Detail : Screen("launch_detail/{launchId}") {
         fun createRoute(launchId: String) = "launch_detail/$launchId"
     }
+
+    object Settings : Screen("settings")
 }
 
 sealed class BottomBarScreen(

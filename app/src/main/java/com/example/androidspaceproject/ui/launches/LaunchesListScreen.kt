@@ -36,14 +36,33 @@ import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.ui.platform.LocalContext
+import com.example.androidspaceproject.SpaceApplication
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LaunchesListScreen(
     onLaunchClick: (String) -> Unit,
+    onSettingsClick: () -> Unit,
     viewModel: LaunchesListViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    val context = LocalContext.current
+    val appContainer =
+        (context.applicationContext as SpaceApplication).appContainer
+
+    val filters by appContainer.filterCache.filters.collectAsState()
+
+    val activeFilterCount = listOf(
+        filters.status,
+        filters.rocket,
+        filters.provider
+    ).count { it.isNotBlank() }
 
     Scaffold(
         topBar = {
@@ -53,6 +72,24 @@ fun LaunchesListScreen(
                         text = "Запуски ракет",
                         style = MaterialTheme.typography.titleLarge
                     )
+                },
+                actions = {
+                    BadgedBox(
+                        badge = {
+                            if (activeFilterCount > 0) {
+                                Badge {
+                                    Text(activeFilterCount.toString())
+                                }
+                            }
+                        }
+                    ) {
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(
+                                Icons.Default.Settings,
+                                contentDescription = "Настройки фильтрации"
+                            )
+                        }
+                    }
                 }
             )
         }

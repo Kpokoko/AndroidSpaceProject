@@ -25,6 +25,7 @@ import com.example.androidspaceproject.ui.navigation.BottomBarScreen
 import com.example.androidspaceproject.ui.navigation.Screen
 import com.example.androidspaceproject.ui.navigation.bottomBarItems
 import com.example.androidspaceproject.ui.theme.AndroidSpaceProjectTheme
+import com.example.androidspaceproject.ui.settings.SettingsScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,10 +61,21 @@ fun MainAppScreen() {
             startDestination = BottomBarScreen.Launches.route,
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable(Screen.Settings.route) {
+                SettingsScreen(
+                    onDone = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
             composable(BottomBarScreen.Launches.route) {
                 LaunchesListScreen(
                     onLaunchClick = { launchId ->
                         navController.navigate(Screen.Detail.createRoute(launchId))
+                    },
+                    onSettingsClick = {
+                        navController.navigate(Screen.Settings.route)
                     }
                 )
             }
