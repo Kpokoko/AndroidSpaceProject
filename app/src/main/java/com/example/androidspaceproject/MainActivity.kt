@@ -26,6 +26,8 @@ import com.example.androidspaceproject.ui.navigation.Screen
 import com.example.androidspaceproject.ui.navigation.bottomBarItems
 import com.example.androidspaceproject.ui.theme.AndroidSpaceProjectTheme
 import com.example.androidspaceproject.ui.settings.SettingsScreen
+import com.example.androidspaceproject.ui.profile.ProfileScreen
+import com.example.androidspaceproject.ui.profile.EditProfileScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,6 +63,12 @@ fun MainAppScreen() {
             startDestination = BottomBarScreen.Launches.route,
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable(BottomBarScreen.Profile.route) {
+                ProfileScreen(onEdit = { navController.navigate(Screen.EditProfile.route) })
+            }
+            composable(Screen.EditProfile.route) {
+                EditProfileScreen(onBack = { navController.popBackStack() })
+            }
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     onDone = {

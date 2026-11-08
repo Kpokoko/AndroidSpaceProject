@@ -5,8 +5,11 @@ import androidx.room.Room
 import com.example.androidspaceproject.data.local.AppDatabase
 import com.example.androidspaceproject.data.preferences.FilterCache
 import com.example.androidspaceproject.data.preferences.FilterPreferences
+import com.example.androidspaceproject.data.repository.ProfileRepositoryImpl
+import com.example.androidspaceproject.domain.profile.ProfileRepository
 
 class AppContainer(context: Context) {
+    val profileRepository: ProfileRepository = ProfileRepositoryImpl(context.applicationContext)
 
     val filterPreferences = FilterPreferences(context)
 
