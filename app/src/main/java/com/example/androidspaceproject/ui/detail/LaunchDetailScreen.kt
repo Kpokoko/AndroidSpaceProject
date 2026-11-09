@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -27,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -34,25 +37,60 @@ import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.androidspaceproject.data.local.FavoriteLaunchEntity
 import com.example.androidspaceproject.data.model.Launch
+import com.example.androidspaceproject.ui.favorites.FavoritesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LaunchDetailScreen(
     launchId: String,
     onBackClick: () -> Unit,
-    viewModel: LaunchDetailViewModel = viewModel()
+    viewModel: LaunchDetailViewModel = viewModel(),
+    favoritesViewModel: FavoritesViewModel = viewModel()
 ) {
     LaunchedEffect(launchId) {
         viewModel.loadLaunch(launchId)
     }
 
     val uiState by viewModel.uiState.collectAsState()
+    val favoriteStatus = remember(launchId, favoritesViewModel) {
+        favoritesViewModel.isFavorite(launchId)
+    }
+    val isFavorite by favoriteStatus.collectAsStateWithLifecycle(initialValue = null)
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Детали запуска") },
+                actions = {
+                    val launch = uiState.launch
+                    val saved = isFavorite
+                    if (launch != null && saved != null) {
+                        IconButton(onClick = {
+                            val favorite = FavoriteLaunchEntity(
+                                id = launch.id,
+                                name = launch.name,
+                                providerName = launch.launchServiceProvider.name,
+                                statusName = launch.status.name,
+                                rocketName = launch.rocket.configuration.name,
+                                padName = launch.pad.name,
+                                date = launch.net.replace("T", " ").replace("Z", " UTC")
+                            )
+                            if (saved) {
+                                favoritesViewModel.removeFavorite(favorite)
+                            } else {
+                                favoritesViewModel.addFavorite(favorite)
+                            }
+                        }) {
+                            Icon(
+                                imageVector = if (saved) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                contentDescription = if (saved) "Удалить из избранного" else "Добавить в избранное"
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
