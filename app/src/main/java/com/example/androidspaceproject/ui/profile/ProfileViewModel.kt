@@ -5,6 +5,7 @@ import android.util.Patterns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.androidspaceproject.SpaceApplication
+import com.example.androidspaceproject.notifications.ClassReminder
 import com.example.androidspaceproject.domain.profile.Profile
 import com.example.androidspaceproject.domain.profile.ResumeDocument
 import com.example.androidspaceproject.domain.profile.ResumeDownloadException
@@ -22,10 +23,18 @@ data class EditProfileState(
     val busy: Boolean = false,
     val saved: Boolean = false,
     val error: String? = null
-)
+) {
+    val timeError: String?
+        get() = when {
+            profile.favoriteClassTime.isEmpty() -> "Укажите время любимой пары"
+            !ClassReminder.isValidTime(profile.favoriteClassTime) -> "Введите время в формате HH:mm (00:00–23:59)"
+            else -> null
+        }
+}
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = (application as SpaceApplication).appContainer.profileRepository
+    private val reminder = ClassReminder(application)
     val profile = repository.profile.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Profile())
     private val _editState = MutableStateFlow(EditProfileState())
     val editState = _editState.asStateFlow()
@@ -47,6 +56,12 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     fun updateResume(value: String) {
         _editState.value = _editState.value.copy(
             profile = _editState.value.profile.copy(resumeUrl = value), error = null
+        )
+    }
+
+    fun updateClassTime(value: String) {
+        _editState.value = _editState.value.copy(
+            profile = _editState.value.profile.copy(favoriteClassTime = value), error = null
         )
     }
 
@@ -72,8 +87,26 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun save() {
+        if (_editState.value.loading || _editState.value.busy) return
+        _editState.value.timeError?.let {
+            showError(it)
+            return
+        }
         val profile = _editState.value.profile.let {
             it.copy(fullName = it.fullName.trim(), resumeUrl = it.resumeUrl.trim())
+        }
+        val triggerAt = ClassReminder.todayAt(profile.favoriteClassTime)
+        if (triggerAt <= System.currentTimeMillis()) {
+            showError("Это время сегодня уже прошло. Выберите время позже текущего")
+            return
+        }
+        if (!reminder.notificationsEnabled()) {
+            showError("Разрешите уведомления в настройках приложения")
+            return
+        }
+        if (!reminder.canScheduleExact()) {
+            showError("Разрешите точные будильники и напоминания в настройках приложения")
+            return
         }
         if (profile.resumeUrl.isNotEmpty() &&
             (!(profile.resumeUrl.startsWith("https://") || profile.resumeUrl.startsWith("http://")) ||
@@ -86,7 +119,12 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             _editState.value = _editState.value.copy(busy = true, error = null)
             try {
                 repository.save(profile)
+                reminder.schedule(triggerAt, profile.fullName)
                 _editState.value = _editState.value.copy(saved = true)
+            } catch (_: SecurityException) {
+                showError("Для напоминания разрешите уведомления и точные будильники")
+            } catch (_: IllegalArgumentException) {
+                showError("Выберите время позже текущего и сохраните ещё раз")
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 showError("Не удалось сохранить профиль")

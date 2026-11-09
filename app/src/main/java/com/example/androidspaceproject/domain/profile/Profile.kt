@@ -5,7 +5,8 @@ import kotlinx.coroutines.flow.Flow
 data class Profile(
     val fullName: String = "",
     val avatarUri: String = "",
-    val resumeUrl: String = ""
+    val resumeUrl: String = "",
+    val favoriteClassTime: String = ""
 )
 
 data class ResumeDocument(val uri: String, val mimeType: String)

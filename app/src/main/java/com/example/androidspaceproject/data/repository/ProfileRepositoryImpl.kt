@@ -28,9 +28,10 @@ class ProfileRepositoryImpl(private val context: Context) : ProfileRepository {
     private val nameKey = stringPreferencesKey("full_name")
     private val avatarKey = stringPreferencesKey("avatar_uri")
     private val resumeKey = stringPreferencesKey("resume_url")
+    private val classTimeKey = stringPreferencesKey("favorite_class_time")
 
     override val profile = store.data.map {
-        Profile(it[nameKey].orEmpty(), it[avatarKey].orEmpty(), it[resumeKey].orEmpty())
+        Profile(it[nameKey].orEmpty(), it[avatarKey].orEmpty(), it[resumeKey].orEmpty(), it[classTimeKey].orEmpty())
     }.catch { error ->
         if (error is IOException) emit(Profile()) else throw error
     }
@@ -40,6 +41,7 @@ class ProfileRepositoryImpl(private val context: Context) : ProfileRepository {
             it[nameKey] = profile.fullName
             it[avatarKey] = profile.avatarUri
             it[resumeKey] = profile.resumeUrl
+            it[classTimeKey] = profile.favoriteClassTime
         }
     }
 
@@ -70,7 +72,6 @@ class ProfileRepositoryImpl(private val context: Context) : ProfileRepository {
                 throw ResumeDownloadException("Сервер не разрешил скачать файл (HTTP ${connection.responseCode}). Проверьте доступ к скачиванию по ссылке.")
             }
             val mime = connection.contentType?.substringBefore(';')?.trim()?.lowercase()
-            // У Drive в адресе скачивания нет расширения: берём имя из заголовка ответа.
             val filename = URLUtil.guessFileName(
                 connection.url.toString(), connection.getHeaderField("Content-Disposition"), mime
             )
@@ -87,8 +88,6 @@ class ProfileRepositoryImpl(private val context: Context) : ProfileRepository {
             }
             if (temporaryFile.length() == 0L) throw IOException("Файл пуст")
 
-            // Drive может отдать PDF как octet-stream без имени и расширения.
-            // Сигнатура файла надёжнее заголовков сервера.
             val header = ByteArray(5)
             val isPdf = temporaryFile.inputStream().use {
                 it.read(header) == header.size && header.contentEquals("%PDF-".toByteArray(Charsets.US_ASCII))
@@ -120,7 +119,6 @@ class ProfileRepositoryImpl(private val context: Context) : ProfileRepository {
         val uri = Uri.parse(url)
         if (uri.host?.lowercase() !in listOf("drive.google.com", "www.drive.google.com")) return url
 
-        // Поддерживаем /file/d/ID/view, /open?id=ID и /uc?id=ID.
         val segments = uri.pathSegments
         val fileId = if (segments.size >= 3 && segments[0] == "file" && segments[1] == "d") {
             segments[2]

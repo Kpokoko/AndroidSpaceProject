@@ -1,9 +1,13 @@
 package com.example.androidspaceproject.ui.profile
 
 import android.Manifest
+import android.app.TimePickerDialog
 import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,6 +18,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -25,16 +30,21 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.androidspaceproject.notifications.ClassReminder
 import java.io.File
+import java.util.Calendar
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(onBack: () -> Unit, viewModel: ProfileViewModel = viewModel()) {
     val state by viewModel.editState.collectAsState()
     val context = LocalContext.current
+    val reminder = remember(context) { ClassReminder(context) }
     var showPhotoSources by rememberSaveable { mutableStateOf(false) }
     var cameraUri by rememberSaveable { mutableStateOf<String?>(null) }
     var permissionRequested by rememberSaveable { mutableStateOf(false) }
+    var notificationPermissionRequested by rememberSaveable { mutableStateOf(false) }
     val photoPermissions = remember {
         when {
             Build.VERSION.SDK_INT >= 34 -> arrayOf(
@@ -47,6 +57,41 @@ fun EditProfileScreen(onBack: () -> Unit, viewModel: ProfileViewModel = viewMode
     }
     fun granted(permission: String) =
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
+    val reminderSettingsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { viewModel.save() }
+
+    fun scheduleOrRequestExactAlarm() {
+        if (!reminder.notificationsEnabled()) {
+            viewModel.showError("Разрешите уведомления приложения и канал «Начало любимой пары», затем нажмите «Готово»")
+            try {
+                reminderSettingsLauncher.launch(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                })
+            } catch (_: ActivityNotFoundException) {
+                viewModel.showError("Разрешите уведомления в системных настройках приложения")
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !reminder.canScheduleExact()) {
+            viewModel.showError("Разрешите точные будильники для напоминания в указанную минуту")
+            try {
+                reminderSettingsLauncher.launch(
+                    Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}"))
+                )
+            } catch (_: ActivityNotFoundException) {
+                viewModel.showError("Разрешите точные будильники в системных настройках приложения")
+            }
+        } else {
+            viewModel.save()
+        }
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { allowed ->
+        if (allowed) scheduleOrRequestExactAlarm()
+        else viewModel.showError("Для напоминания нужно разрешить уведомления. Нажмите «Готово», чтобы повторить")
+    }
 
     val photoPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -162,11 +207,51 @@ fun EditProfileScreen(onBack: () -> Unit, viewModel: ProfileViewModel = viewMode
                     enabled = !state.busy,
                     singleLine = true
                 )
+                OutlinedTextField(
+                    value = state.profile.favoriteClassTime,
+                    onValueChange = viewModel::updateClassTime,
+                    label = { Text("Время любимой пары") },
+                    placeholder = { Text("HH:mm") },
+                    supportingText = { Text(state.timeError ?: "Напоминание на сегодня") },
+                    isError = state.timeError != null,
+                    trailingIcon = {
+                        IconButton(
+                            enabled = !state.busy,
+                            onClick = {
+                                val time = state.profile.favoriteClassTime
+                                val calendar = Calendar.getInstance()
+                                val valid = ClassReminder.isValidTime(time)
+                                TimePickerDialog(
+                                    context,
+                                    { _, hour, minute ->
+                                        viewModel.updateClassTime(String.format(Locale.ROOT, "%02d:%02d", hour, minute))
+                                    },
+                                    if (valid) time.substring(0, 2).toInt() else calendar.get(Calendar.HOUR_OF_DAY),
+                                    if (valid) time.substring(3, 5).toInt() else calendar.get(Calendar.MINUTE),
+                                    true
+                                ).show()
+                            }
+                        ) { Icon(Icons.Default.AccessTime, contentDescription = "Выбрать время") }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.busy,
+                    singleLine = true
+                )
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 if (state.busy) CircularProgressIndicator()
                 Button(
-                    onClick = viewModel::save,
-                    enabled = !state.busy,
+                    onClick = {
+                        if (Build.VERSION.SDK_INT >= 33 && !granted(Manifest.permission.POST_NOTIFICATIONS) &&
+                            !notificationPermissionRequested
+                        ) {
+                            notificationPermissionRequested = true
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            scheduleOrRequestExactAlarm()
+                        }
+                    },
+                    enabled = !state.busy && state.timeError == null,
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Готово") }
             }
